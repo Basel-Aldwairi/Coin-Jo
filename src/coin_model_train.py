@@ -1,3 +1,5 @@
+# Basel Al-Dwairi - Model Training
+
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras.models import Model
@@ -26,7 +28,6 @@ x = preprocess_input(inputs)
 x = base(x)
 x = GlobalAveragePooling2D()(x)
 x = Dense(128, activation='relu')(x)
-# x = Dense(64, activation='sigmoid')(x)
 
 outputs = Dense(4, activation='softmax')(x)
 model = Model(inputs=inputs, outputs=outputs)

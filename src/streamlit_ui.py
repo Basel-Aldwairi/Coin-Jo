@@ -1,3 +1,5 @@
+# Basel Al-Dwairi - User Interface
+
 import streamlit as st
 import coin_model
 from PIL import Image
@@ -6,6 +8,7 @@ import numpy as np
 import requests
 from io import BytesIO
 
+# session_state to avoid reloading
 if 'model' not in st.session_state:
     st.session_state.model = coin_model.CoinModel()
 if 'predictions' not in st.session_state:
@@ -17,15 +20,18 @@ if 'image' not in st.session_state:
 if 'view_predictions' not in st.session_state:
     st.session_state.view_predictions = False
 
+# Cashe identical prediction request, improves UX
 @st.cache_data(show_spinner=True)
 def cashed_predict(img, **params):
     st.session_state.model.predict_image(img)
 
-
+# Don't view preictions if image changed , helps with clarity
 st.session_state.view_predictions = False
 
+# Choose which images to predict
 file_type = st.selectbox('File Type', options=['Local File', 'Web Image'])
 
+# Local file
 if file_type == 'Local File':
 
     img_file = st.file_uploader('Upload a local file image', accept_multiple_files=False)
@@ -39,12 +45,14 @@ if file_type == 'Local File':
         except Exception as e:
             st.error('Invalid Image File')
 
+# Web image
 if file_type == 'Web Image':
 
     url = st.text_input('Enter Image URL', value="")
     if url:
         try:
 
+            #
             response = requests.get(url)
             image_pil = Image.open(BytesIO(response.content)).convert('RGB')
             image_cv = np.array(image_pil)
@@ -54,7 +62,7 @@ if file_type == 'Web Image':
         except Exception as e:
             st.error('Invalid Image URL')
 
-
+# Show image toggle
 if st.session_state.image is not None:
     show_image = st.toggle('Show Selected Image')
     if show_image:
@@ -65,17 +73,16 @@ if st.session_state.image is not None:
         image_pil = Image.fromarray(st.session_state.image)
         st.image(image_pil)
 
-
+# Predict classification
 predict_button = st.button('Predict Coin')
 if predict_button:
     model = st.session_state.model
-    # print(st.session_state.image)
-    # prediction, percentage =  model.predict_image(st.session_state.image)
 
     predictions =  model.predict_image(st.session_state.image)
     st.session_state.predictions = predictions
     st.session_state.view_predictions = True
 
+# Show prediction replies
 if st.session_state.view_predictions:
     predictions = st.session_state.predictions
     predictions.sort(reverse=True)
@@ -84,6 +91,7 @@ if st.session_state.view_predictions:
 
     st.success(f'Prediction: {prediction} ({confidence:.3f}%)')
 
+    # Draw bar chart for predictions
     fig, ax = coin_model.plot_predictions(predictions)
 
     st.pyplot(fig)
