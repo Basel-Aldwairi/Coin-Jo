@@ -11,7 +11,7 @@ import cv2
 LAPTOP_IP = "0.0.0.0"
 TRIGGER_PORT = 6000  # ESP
 CAMERA_PORT = 7000 # ESPCAM
-CAMERA_IP = "192.168.1.49"
+CAMERA_IP = "10.12.7.217"
 
 # Classification Model
 model = coin_model.CoinModel()
@@ -27,21 +27,23 @@ label_map = {
 # Computer Server to handle connections from ESP
 trigger_server = socket.socket()
 trigger_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-trigger_server.settimeout(10)
+# trigger_server.settimeout(10)
 trigger_server.bind((LAPTOP_IP, TRIGGER_PORT))
 trigger_server.listen(1)
 
 
+print('Listeing to ESP')
 conn, _ = trigger_server.accept()
-conn.settimeout(10)
+
 # While ESP is connected
 while conn:
 
+    print('_'*20)
     print("Waiting for ESP32 trigger...")
 
     msg = conn.recv(1024).decode().strip()
 
-    if msg == '':
+    if conn is None:
         print("Closed Connection")
         conn.close()
         break
@@ -56,17 +58,17 @@ while conn:
     # Connect to ESPCAM server to send a trigger to take picture
     cmd = socket.socket()
     cmd.connect((CAMERA_IP, CAMERA_PORT))
-    cmd.settimeout(10)
+    # cmd.settimeout(10)
     cmd.sendall(b'\x01') # Trigger is 0x01
 
-
+    print('Listening to Camera')
     # Read size to continue to read Image
     raw_size = cmd.recv(4)
     size = struct.unpack("<I", raw_size)[0]
 
     data = b""
     while len(data) < size:
-        packet = cmd.recv(1024)
+        packet = cmd.recv(4096)
         if not packet:
             break
         data += packet
@@ -90,6 +92,7 @@ while conn:
 
     # Send prediction to ESP
     label = label_map[prediction]
+    print(f'{prediction = }')
     packed_data = struct.pack('!i', label)
     conn.sendall(packed_data)
 

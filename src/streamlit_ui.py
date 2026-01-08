@@ -1,5 +1,16 @@
 # Basel Al-Dwairi - User Interface
 
+
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# import os
+
+#
+import tensorflow as tf
+tf.config.set_visible_devices([], 'GPU')
+
 import streamlit as st
 import coin_model
 from PIL import Image
@@ -19,6 +30,10 @@ if 'image' not in st.session_state:
     st.session_state.image = None
 if 'view_predictions' not in st.session_state:
     st.session_state.view_predictions = False
+if 'selected_mode' not in st.session_state:
+    st.session_state.selected_mode = 'Single Coin'
+if 'total_ammount' not in st.session_state:
+    st.session_state.total_ammount = None
 
 # Cashe identical prediction request, improves UX
 @st.cache_data(show_spinner=True)
@@ -28,8 +43,13 @@ def cashed_predict(img, **params):
 # Don't view preictions if image changed , helps with clarity
 st.session_state.view_predictions = False
 
+st.sidebar.title('Options')
+
+selected_mode = st.sidebar.radio('Prediction Mode', options=['Single Coin', 'Multiple Coins - Segmentation'])
+st.session_state.selected_mode = selected_mode
+
 # Choose which images to predict
-file_type = st.selectbox('File Type', options=['Local File', 'Web Image'])
+file_type = st.sidebar.radio('File Type', options=['Local File', 'Web Image'])
 
 # Local file
 if file_type == 'Local File':
@@ -39,7 +59,7 @@ if file_type == 'Local File':
         try:
             image_pil = Image.open(img_file)
             image = np.array(image_pil)
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
             st.session_state.image = image
         except Exception as e:
@@ -78,20 +98,35 @@ predict_button = st.button('Predict Coin')
 if predict_button:
     model = st.session_state.model
 
-    predictions =  model.predict_image(st.session_state.image)
-    st.session_state.predictions = predictions
-    st.session_state.view_predictions = True
+    if st.session_state.selected_mode == 'Single Coin':
+        predictions =  model.predict_image(st.session_state.image)
+        st.session_state.predictions = predictions
+        st.session_state.view_predictions = True
+
+
+    if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
+        predictions = model.predict_segmented_images(st.session_state.image)
+        total_ammount = model.predict_total_ammount(predictions)
+        st.session_state.total_ammount = total_ammount
+        st.session_state.view_predictions = True
+
+
 
 # Show prediction replies
 if st.session_state.view_predictions:
-    predictions = st.session_state.predictions
-    predictions.sort(reverse=True)
+    if st.session_state.selected_mode == 'Single Coin':
+        predictions = st.session_state.predictions
+        predictions.sort(reverse=True)
 
-    confidence, prediction = predictions[0]
+        confidence, prediction = predictions[0]
 
-    st.success(f'Prediction: {prediction} ({confidence:.3f}%)')
+        st.success(f'Prediction: {prediction} ({confidence:.3f}%)')
 
-    # Draw bar chart for predictions
-    fig, ax = coin_model.plot_predictions(predictions)
+        # Draw bar chart for predictions
+        fig, ax = coin_model.plot_predictions(predictions)
 
-    st.pyplot(fig)
+        st.pyplot(fig)
+
+    if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
+        total_ammount = st.session_state.total_ammount
+        st.success(f'Total Amount: {total_ammount}')
