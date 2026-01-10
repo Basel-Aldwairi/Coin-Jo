@@ -27,47 +27,58 @@ def plot_predictions(predictions):
 
     return fig, ax
 
-
-# Image is np.array() in rgb
+# Segmentation, each coin alone
 def segment_image(image, min_circularity=0.25):
 
+    # Image is np.array() in rgb
     preprocessed_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
+    # Gaussian blur, kernel size = (3,3)
     kernel_width = 3
     preprocessed_image = cv2.GaussianBlur(preprocessed_image,
                                           (kernel_width, kernel_width), 0)
 
+    # Retrive edges, lower threashold = 50, upper threshold = 150
     edges = cv2.Canny(preprocessed_image, 50, 150, apertureSize=3)
 
+    # Morphological closing, kernel = ellipse (5,5), iterations = 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     preprocessed_image = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
 
+    # Contours
     contours, _ = cv2.findContours(preprocessed_image,
                                    cv2.RETR_EXTERNAL,
                                    cv2.CHAIN_APPROX_SIMPLE)
 
+    # Filter contours
     coin_contours = []
     for contour in contours:
 
+        # If area is too small, filter out
         area = cv2.contourArea(contour)
         if area < 500:
             continue
 
+        # If perimeter = 0, filter out
         perimeter = cv2.arcLength(contour, True)
         if perimeter == 0:
             continue
 
         circularity = (4 * np.pi * area) / perimeter ** 2
 
+        # If circularity of contour is less than the minimum, filter out
         if circularity >= min_circularity:
+            # Only coins remain
             coin_contours.append(contour)
 
+    # Crop each coin alone
     segmented_images = []
     for contour in coin_contours:
         x, y, w, h = cv2.boundingRect(contour)
 
         segmented_images.append(image[y:y + h, x:x + w])
 
+    # Return list of segmented coins
     return segmented_images
 
 
@@ -110,27 +121,30 @@ class CoinModel:
 
         return prediction_labels
 
-
+    # Predict each coins from a raw image of coins
     def predict_segmented_images(self, image, min_circularity=0.25):
+        # Get a list of segmented coins
         segemented_images = segment_image(image, min_circularity)
 
+        # Predict each coin alone
         predictions = []
         for segemented_image in segemented_images:
             prediction = self.predict_image(segemented_image)
 
+            # Apeend prediction to list
             prediction.sort()
             prediction = prediction[::-1]
             predictions.append(prediction[0][1])
 
 
-        # print(predictions)
+        # Return predictions for each coin
         return predictions
 
+    # Lookup function for coin value
     def get_coin_value(self, coin_label):
-        # print(coin_label)
         return self.coin_value_map[coin_label]
 
+    # Returns total sum of all coins
     def predict_total_ammount(self, coin_predictions):
         predicted_values = list(map(self.get_coin_value, coin_predictions))
-        # print(predicted_values)
         return np.array(predicted_values).sum()

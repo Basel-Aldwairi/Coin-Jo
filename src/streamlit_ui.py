@@ -1,13 +1,7 @@
 # Basel Al-Dwairi - User Interface
 
-
 import os
-
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
-# import os
-
-#
 import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
@@ -45,6 +39,7 @@ st.session_state.view_predictions = False
 
 st.sidebar.title('Options')
 
+# Prediction method
 selected_mode = st.sidebar.radio('Prediction Mode', options=['Single Coin', 'Multiple Coins - Segmentation'])
 st.session_state.selected_mode = selected_mode
 
@@ -98,12 +93,13 @@ predict_button = st.button('Predict Coin')
 if predict_button:
     model = st.session_state.model
 
+    # Single coin predition
     if st.session_state.selected_mode == 'Single Coin':
         predictions =  model.predict_image(st.session_state.image)
         st.session_state.predictions = predictions
         st.session_state.view_predictions = True
 
-
+    # Segmentation mode
     if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
         predictions = model.predict_segmented_images(st.session_state.image)
         total_ammount = model.predict_total_ammount(predictions)
@@ -114,12 +110,15 @@ if predict_button:
 
 # Show prediction replies
 if st.session_state.view_predictions:
+
+    # Single coin prediction
     if st.session_state.selected_mode == 'Single Coin':
         predictions = st.session_state.predictions
         predictions.sort(reverse=True)
 
         confidence, prediction = predictions[0]
 
+        # Show label and confidence percentage
         st.success(f'Prediction: {prediction} ({confidence:.3f}%)')
 
         # Draw bar chart for predictions
@@ -127,6 +126,9 @@ if st.session_state.view_predictions:
 
         st.pyplot(fig)
 
+    # Multicoin prediction
     if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
+
+        # Show total sum
         total_ammount = st.session_state.total_ammount
         st.success(f'Total Amount: {total_ammount}')
