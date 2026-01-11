@@ -28,6 +28,10 @@ if 'selected_mode' not in st.session_state:
     st.session_state.selected_mode = 'Single Coin'
 if 'total_ammount' not in st.session_state:
     st.session_state.total_ammount = None
+if 'min_circularity' not in st.session_state:
+    st.session_state.min_circularity = 0
+if 'predicted_values' not in st.session_state:
+    st.session_state.predicted_values = None
 
 # Cashe identical prediction request, improves UX
 @st.cache_data(show_spinner=True)
@@ -45,6 +49,11 @@ st.session_state.selected_mode = selected_mode
 
 # Choose which images to predict
 file_type = st.sidebar.radio('File Type', options=['Local File', 'Web Image'])
+
+# if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
+#     min_circularity = st.sidebar.select_slider('Min Circularity % : ', range(0, 101, 5), value=25)
+#
+#     st.session_state.min_circularity = min_circularity / 100.0
 
 # Local file
 if file_type == 'Local File':
@@ -101,9 +110,10 @@ if predict_button:
 
     # Segmentation mode
     if st.session_state.selected_mode == 'Multiple Coins - Segmentation':
-        predictions = model.predict_segmented_images(st.session_state.image)
-        total_ammount = model.predict_total_ammount(predictions)
+        predictions = model.predict_segmented_images(st.session_state.image, min_circularity=st.session_state.min_circularity)
+        total_ammount, predicted_values = model.predict_total_ammount(predictions)
         st.session_state.total_ammount = total_ammount
+        st.session_state.predicted_values = predicted_values
         st.session_state.view_predictions = True
 
 
@@ -131,4 +141,7 @@ if st.session_state.view_predictions:
 
         # Show total sum
         total_ammount = st.session_state.total_ammount
-        st.success(f'Total Amount: {total_ammount}')
+        predicted_values = st.session_state.predicted_values
+        predicted_values_str = ', '.join(predicted_values)
+        st.success(f'Coins found : {predicted_values_str}')
+        st.success(f'Total Amount: {total_ammount:.2f}')

@@ -147,4 +147,4 @@ class CoinModel:
     # Returns total sum of all coins
     def predict_total_ammount(self, coin_predictions):
         predicted_values = list(map(self.get_coin_value, coin_predictions))
-        return np.array(predicted_values).sum()
+        return np.array(predicted_values).sum(), coin_predictions
